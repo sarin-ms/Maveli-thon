@@ -187,11 +187,17 @@ export default function OnamSnakeGame() {
   }, [direction, gameStarted])
 
   const handleTouchStart = (e) => {
+    e.preventDefault()
     const touch = e.touches[0]
     setTouchStart({ x: touch.clientX, y: touch.clientY })
   }
 
+  const handleTouchMove = (e) => {
+    e.preventDefault() // Prevent scrolling during swipe
+  }
+
   const handleTouchEnd = (e) => {
+    e.preventDefault()
     if (!touchStart || !gameStarted) return
 
     const touch = e.changedTouches[0]
@@ -363,6 +369,7 @@ export default function OnamSnakeGame() {
               height={400}
               className="border-2 border-emerald-300 rounded-lg bg-gradient-to-br from-emerald-50 to-yellow-50"
               onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             />
           </Card>
