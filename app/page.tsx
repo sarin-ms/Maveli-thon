@@ -419,12 +419,21 @@ export default function OnamSnakeGame(): JSX.Element {
   // Prevent mobile browser behaviors globally
   useEffect(() => {
     const preventDefaultBehaviors = (e: TouchEvent): void => {
-      // Only prevent pull-to-refresh and overscroll when game is active
+      // Only prevent pull-to-refresh and overscroll when game is active and not game over
       // and not touching interactive elements
-      if (gameStarted && e.touches && e.touches.length > 0) {
+      if (gameStarted && !gameOver && e.touches && e.touches.length > 0) {
         const target = e.target as Element
-        // Don't prevent default on buttons and interactive elements
-        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+        // Don't prevent default on buttons, inputs, and interactive elements
+        if (target && (
+          target.closest('button') || 
+          target.closest('input') ||
+          target.closest('textarea') ||
+          target.closest('[role="button"]') ||
+          target.closest('[contenteditable]') ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA'
+        )) {
           return
         }
         e.preventDefault()
@@ -432,11 +441,20 @@ export default function OnamSnakeGame(): JSX.Element {
     }
 
     const preventScroll = (e: TouchEvent): void => {
-      // Prevent scrolling when game is active
-      if (gameStarted) {
+      // Prevent scrolling when game is active and not game over
+      if (gameStarted && !gameOver) {
         const target = e.target as Element
-        // Don't prevent default on buttons and interactive elements
-        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+        // Don't prevent default on buttons, inputs, and interactive elements
+        if (target && (
+          target.closest('button') || 
+          target.closest('input') ||
+          target.closest('textarea') ||
+          target.closest('[role="button"]') ||
+          target.closest('[contenteditable]') ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA'
+        )) {
           return
         }
         e.preventDefault()
@@ -453,9 +471,17 @@ export default function OnamSnakeGame(): JSX.Element {
       if (e.touches.length > 1) return
       const touch = e.touches[0]
       const startY = touch.pageY
-      if (startY <= 50 && gameStarted) {
+      if (startY <= 50 && gameStarted && !gameOver) {
         const target = e.target as Element
-        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+        if (target && (
+          target.closest('button') || 
+          target.closest('input') ||
+          target.closest('textarea') ||
+          target.closest('[role="button"]') ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA'
+        )) {
           return
         }
         e.preventDefault()
@@ -467,7 +493,7 @@ export default function OnamSnakeGame(): JSX.Element {
       document.removeEventListener('touchmove', preventScroll)
       document.removeEventListener('touchend', preventDefaultBehaviors)
     }
-  }, [gameStarted])
+  }, [gameStarted, gameOver])
 
   // Add CSS to prevent mobile browser behaviors only during gameplay
   useEffect(() => {
@@ -673,19 +699,24 @@ export default function OnamSnakeGame(): JSX.Element {
   }
 
   const handleGameOver = (): void => {
+    console.log('Game over triggered. Username:', username.trim(), 'Score:', score)
     // Add current score to leaderboard if we have a username
     if (username.trim() && score > 0) {
+      console.log('Adding score to leaderboard for existing user')
       updateLeaderboard(username, score).catch(console.error)
     } else if (score > 0) {
       // Show name input if no username is set and player has a score
+      console.log('Showing name input for new user')
       setShowNameInput(true)
     }
   }
 
   const handleNameSubmit = (): void => {
+    console.log('Handle name submit clicked. Username:', username.trim(), 'Score:', score)
     if (username.trim()) {
       localStorage.setItem("onam-snake-username", username.trim())
       if (score > 0) {
+        console.log('Submitting score to leaderboard')
         updateLeaderboard(username, score).catch(console.error)
       }
     }
