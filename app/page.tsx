@@ -61,6 +61,24 @@ export default function OnamSnakeGame(): JSX.Element {
   })
   const [touchStart, setTouchStart] = useState<TouchStart | null>(null)
   const [canvasSize, setCanvasSize] = useState<number>(400)
+  const [maveliImage, setMaveliImage] = useState<HTMLImageElement | null>(null)
+  const [tailImage, setTailImage] = useState<HTMLImageElement | null>(null)
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = '/maveli.webp'
+    img.onload = () => {
+      setMaveliImage(img)
+    }
+  }, [])
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = '/tail.webp'
+    img.onload = () => {
+      setTailImage(img)
+    }
+  }, [])
 
   // Set responsive canvas size
   useEffect(() => {
@@ -379,34 +397,72 @@ export default function OnamSnakeGame(): JSX.Element {
 
     snake.forEach((segment, index) => {
       const isHead = index === 0
+      const isTail = index === snake.length - 1
 
-      const segmentGradient = ctx.createRadialGradient(
-        segment.x * GRID_SIZE + GRID_SIZE / 2,
-        segment.y * GRID_SIZE + GRID_SIZE / 2,
-        0,
-        segment.x * GRID_SIZE + GRID_SIZE / 2,
-        segment.y * GRID_SIZE + GRID_SIZE / 2,
-        GRID_SIZE / 2,
-      )
-
-      if (isHead) {
-        segmentGradient.addColorStop(0, "#22c55e")
-        segmentGradient.addColorStop(1, "#16a34a")
+      if (isHead && maveliImage) {
+        // Draw Maveli image as snake head
+        ctx.drawImage(
+          maveliImage,
+          segment.x * GRID_SIZE + 1,
+          segment.y * GRID_SIZE + 1,
+          GRID_SIZE - 2,
+          GRID_SIZE - 2
+        )
+      } else if (isTail && tailImage) {
+        // Draw tail image as snake tail
+        ctx.drawImage(
+          tailImage,
+          segment.x * GRID_SIZE + 1,
+          segment.y * GRID_SIZE + 1,
+          GRID_SIZE - 2,
+          GRID_SIZE - 2
+        )
+      } else if (isTail && !tailImage) {
+        // Fallback: Draw yellow square emoji as tail if image not loaded
+        ctx.font = `${GRID_SIZE - 4}px Arial`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(
+          '🟨',
+          segment.x * GRID_SIZE + GRID_SIZE / 2,
+          segment.y * GRID_SIZE + GRID_SIZE / 2
+        )
       } else {
-        segmentGradient.addColorStop(0, "#34d399")
-        segmentGradient.addColorStop(1, "#22c55e")
-      }
+        // Draw body segments with yellow square emoji
+        ctx.font = `${GRID_SIZE - 4}px Arial`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(
+          '🟨',
+          segment.x * GRID_SIZE + GRID_SIZE / 2,
+          segment.y * GRID_SIZE + GRID_SIZE / 2
+        )
 
-      ctx.fillStyle = segmentGradient
-      ctx.fillRect(segment.x * GRID_SIZE + 1, segment.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2)
-
-      if (isHead) {
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(segment.x * GRID_SIZE + 5, segment.y * GRID_SIZE + 5, 3, 3)
-        ctx.fillRect(segment.x * GRID_SIZE + 12, segment.y * GRID_SIZE + 5, 3, 3)
-        ctx.fillStyle = "#000000"
-        ctx.fillRect(segment.x * GRID_SIZE + 6, segment.y * GRID_SIZE + 6, 1, 1)
-        ctx.fillRect(segment.x * GRID_SIZE + 13, segment.y * GRID_SIZE + 6, 1, 1)
+        // Fallback for head if Maveli image not loaded
+        if (isHead && !maveliImage) {
+          // Draw gradient background for head fallback
+          const segmentGradient = ctx.createRadialGradient(
+            segment.x * GRID_SIZE + GRID_SIZE / 2,
+            segment.y * GRID_SIZE + GRID_SIZE / 2,
+            0,
+            segment.x * GRID_SIZE + GRID_SIZE / 2,
+            segment.y * GRID_SIZE + GRID_SIZE / 2,
+            GRID_SIZE / 2,
+          )
+          segmentGradient.addColorStop(0, "#22c55e")
+          segmentGradient.addColorStop(1, "#16a34a")
+          
+          ctx.fillStyle = segmentGradient
+          ctx.fillRect(segment.x * GRID_SIZE + 1, segment.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2)
+          
+          // Draw eyes for head fallback
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(segment.x * GRID_SIZE + 5, segment.y * GRID_SIZE + 5, 3, 3)
+          ctx.fillRect(segment.x * GRID_SIZE + 12, segment.y * GRID_SIZE + 5, 3, 3)
+          ctx.fillStyle = "#000000"
+          ctx.fillRect(segment.x * GRID_SIZE + 6, segment.y * GRID_SIZE + 6, 1, 1)
+          ctx.fillRect(segment.x * GRID_SIZE + 13, segment.y * GRID_SIZE + 6, 1, 1)
+        }
       }
     })
 
@@ -430,7 +486,7 @@ export default function OnamSnakeGame(): JSX.Element {
         GRID_SIZE - 4,
       )
     }
-  }, [snake, food])
+  }, [snake, food, maveliImage, tailImage])
 
   const startGame = (): void => {
     setSnake(INITIAL_SNAKE)
