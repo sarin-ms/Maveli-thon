@@ -186,6 +186,79 @@ export default function OnamSnakeGame() {
     return () => window.removeEventListener("keydown", handleKeyPress)
   }, [direction, gameStarted])
 
+  // Prevent mobile browser behaviors globally
+  useEffect(() => {
+    const preventDefaultBehaviors = (e) => {
+      // Prevent pull-to-refresh and overscroll
+      if (e.touches && e.touches.length > 0) {
+        e.preventDefault()
+      }
+    }
+
+    const preventScroll = (e) => {
+      // Prevent scrolling when game is active
+      if (gameStarted) {
+        e.preventDefault()
+      }
+    }
+
+    // Add touch event listeners to document to capture all touch events
+    document.addEventListener('touchstart', preventDefaultBehaviors, { passive: false })
+    document.addEventListener('touchmove', preventScroll, { passive: false })
+    document.addEventListener('touchend', preventDefaultBehaviors, { passive: false })
+
+    // Prevent pull-to-refresh specifically
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const startY = touch.pageY
+      if (startY <= 50 && gameStarted) {
+        e.preventDefault()
+      }
+    }, { passive: false })
+
+    return () => {
+      document.removeEventListener('touchstart', preventDefaultBehaviors)
+      document.removeEventListener('touchmove', preventScroll)
+      document.removeEventListener('touchend', preventDefaultBehaviors)
+    }
+  }, [gameStarted])
+
+  // Add CSS to prevent mobile browser behaviors only during gameplay
+  useEffect(() => {
+    if (gameStarted) {
+      // Disable pull-to-refresh and overscroll only during game
+      document.body.style.overscrollBehavior = 'none'
+      document.documentElement.style.overscrollBehavior = 'none'
+      
+      // Prevent text selection and callouts
+      document.body.style.webkitTouchCallout = 'none'
+      document.body.style.webkitUserSelect = 'none'
+      document.body.style.userSelect = 'none'
+      
+      // Disable pull-to-refresh in Chrome/Safari
+      document.body.style.touchAction = 'pan-x pan-y'
+    } else {
+      // Reset styles when game is not active
+      document.body.style.overscrollBehavior = ''
+      document.documentElement.style.overscrollBehavior = ''
+      document.body.style.webkitTouchCallout = ''
+      document.body.style.webkitUserSelect = ''
+      document.body.style.userSelect = ''
+      document.body.style.touchAction = ''
+    }
+
+    return () => {
+      // Cleanup on unmount
+      document.body.style.overscrollBehavior = ''
+      document.documentElement.style.overscrollBehavior = ''
+      document.body.style.webkitTouchCallout = ''
+      document.body.style.webkitUserSelect = ''
+      document.body.style.userSelect = ''
+      document.body.style.touchAction = ''
+    }
+  }, [gameStarted])
+
   const handleTouchStart = (e) => {
     e.preventDefault()
     const touch = e.touches[0]
@@ -331,7 +404,17 @@ export default function OnamSnakeGame() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-yellow-50 to-orange-50 p-4">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-emerald-50 via-yellow-50 to-orange-50 p-4"
+      style={{
+        touchAction: gameStarted ? 'none' : 'auto',
+        overscrollBehavior: gameStarted ? 'none' : 'auto',
+        WebkitOverflowScrolling: 'touch'
+      }}
+      onTouchStart={gameStarted ? (e) => e.preventDefault() : undefined}
+      onTouchMove={gameStarted ? (e) => e.preventDefault() : undefined}
+      onTouchEnd={gameStarted ? (e) => e.preventDefault() : undefined}
+    >
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="w-full h-full bg-[radial-gradient(circle_at_20%_20%,_#fbbf24_2px,_transparent_2px),radial-gradient(circle_at_80%_80%,_#34d399_2px,_transparent_2px),radial-gradient(circle_at_40%_60%,_#f97316_1px,_transparent_1px)] bg-[length:80px_80px]"></div>
       </div>
