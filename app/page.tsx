@@ -60,6 +60,20 @@ export default function OnamSnakeGame(): JSX.Element {
     totalFoodsEaten: 0,
   })
   const [touchStart, setTouchStart] = useState<TouchStart | null>(null)
+  const [canvasSize, setCanvasSize] = useState<number>(400)
+
+  // Set responsive canvas size
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const isMobile = window.innerWidth < 768
+      const newSize = isMobile ? Math.min(320, window.innerWidth - 48) : 400
+      setCanvasSize(newSize)
+    }
+
+    updateCanvasSize()
+    window.addEventListener('resize', updateCanvasSize)
+    return () => window.removeEventListener('resize', updateCanvasSize)
+  }, [])
 
   useEffect(() => {
     const savedHighScore = localStorage.getItem("onam-snake-high-score")
@@ -220,8 +234,14 @@ export default function OnamSnakeGame(): JSX.Element {
   // Prevent mobile browser behaviors globally
   useEffect(() => {
     const preventDefaultBehaviors = (e: TouchEvent): void => {
-      // Prevent pull-to-refresh and overscroll
-      if (e.touches && e.touches.length > 0) {
+      // Only prevent pull-to-refresh and overscroll when game is active
+      // and not touching interactive elements
+      if (gameStarted && e.touches && e.touches.length > 0) {
+        const target = e.target as Element
+        // Don't prevent default on buttons and interactive elements
+        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+          return
+        }
         e.preventDefault()
       }
     }
@@ -229,6 +249,11 @@ export default function OnamSnakeGame(): JSX.Element {
     const preventScroll = (e: TouchEvent): void => {
       // Prevent scrolling when game is active
       if (gameStarted) {
+        const target = e.target as Element
+        // Don't prevent default on buttons and interactive elements
+        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+          return
+        }
         e.preventDefault()
       }
     }
@@ -244,6 +269,10 @@ export default function OnamSnakeGame(): JSX.Element {
       const touch = e.touches[0]
       const startY = touch.pageY
       if (startY <= 50 && gameStarted) {
+        const target = e.target as Element
+        if (target && (target.closest('button') || target.closest('[role="button"]'))) {
+          return
+        }
         e.preventDefault()
       }
     }, { passive: false })
@@ -436,7 +465,7 @@ export default function OnamSnakeGame(): JSX.Element {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-emerald-50 via-yellow-50 to-orange-50 p-4"
+      className="min-h-screen bg-gradient-to-br from-emerald-50 via-yellow-50 to-orange-50 p-2 sm:p-4"
       style={{
         touchAction: gameStarted ? 'none' : 'auto',
         overscrollBehavior: gameStarted ? 'none' : 'auto',
@@ -451,13 +480,13 @@ export default function OnamSnakeGame(): JSX.Element {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-6xl font-black text-emerald-800 mb-4 text-balance">Onam Snake & Papadam</h1>
-          <p className="text-lg text-emerald-700 mb-6 text-pretty">
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-emerald-800 mb-2 sm:mb-4 text-balance">Onam Snake & Papadam</h1>
+          <p className="text-base sm:text-lg text-emerald-700 mb-4 sm:mb-6 text-pretty px-2">
             Celebrate Onam with this festive snake game! Collect papadams and enjoy the feast!
           </p>
 
-          <div className="flex justify-center gap-4 mb-6 flex-wrap">
+          <div className="flex justify-center gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap px-2">
             <Card className="px-4 py-2 bg-white/80 backdrop-blur border-emerald-200">
               <div className="text-sm text-emerald-600">Score</div>
               <div className="text-2xl font-bold text-emerald-800">{score}</div>
@@ -476,12 +505,12 @@ export default function OnamSnakeGame(): JSX.Element {
         </div>
 
         <div className="flex flex-col items-center">
-          <Card className="p-4 bg-white/90 backdrop-blur mb-6 border-emerald-200 relative">
+          <Card className="p-2 sm:p-4 bg-white/90 backdrop-blur mb-4 sm:mb-6 border-emerald-200 relative mx-2">
             <canvas
               ref={canvasRef}
-              width={400}
-              height={400}
-              className="border-2 border-emerald-300 rounded-lg bg-gradient-to-br from-emerald-50 to-yellow-50"
+              width={canvasSize}
+              height={canvasSize}
+              className="border-2 border-emerald-300 rounded-lg bg-gradient-to-br from-emerald-50 to-yellow-50 max-w-full"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -492,8 +521,12 @@ export default function OnamSnakeGame(): JSX.Element {
             {!gameStarted && !gameOver && (
               <Button
                 onClick={startGame}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  startGame()
+                }}
                 size="lg"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 touch-manipulation"
               >
                 Start Onam Feast
               </Button>
@@ -512,8 +545,12 @@ export default function OnamSnakeGame(): JSX.Element {
                 </div>
                 <Button
                   onClick={startGame}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    startGame()
+                  }}
                   size="lg"
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold px-8 py-3"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold px-8 py-3 touch-manipulation"
                 >
                   Start New Feast
                 </Button>
@@ -523,8 +560,12 @@ export default function OnamSnakeGame(): JSX.Element {
             {gameStarted && !gameOver && (
               <Button
                 onClick={resetGame}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  resetGame()
+                }}
                 variant="outline"
-                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 bg-transparent"
+                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 bg-transparent touch-manipulation"
               >
                 Reset Game
               </Button>
