@@ -64,12 +64,13 @@ export async function POST(request: NextRequest) {
         leaderboard[existingPlayerIndex] = {
           name: name.trim(),
           score,
-          date: new Date().toLocaleDateString('en-US', {
+          date: new Date().toLocaleString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Asia/Kolkata' // Indian Standard Time
           })
         }
       } else {
@@ -86,12 +87,13 @@ export async function POST(request: NextRequest) {
       const newEntry: LeaderboardEntry = {
         name: name.trim(),
         score,
-        date: new Date().toLocaleDateString('en-US', {
+        date: new Date().toLocaleString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
+          timeZone: 'Asia/Kolkata' // Indian Standard Time
         })
       }
       leaderboard.push(newEntry)

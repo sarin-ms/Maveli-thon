@@ -171,12 +171,13 @@ export default function OnamSnakeGame(): JSX.Element {
               localLeaderboard[existingPlayerIndex] = {
                 name: playerName,
                 score,
-                date: new Date().toLocaleDateString('en-US', {
+                date: new Date().toLocaleString('en-US', {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
-                  minute: '2-digit'
+                  minute: '2-digit',
+                  timeZone: 'Asia/Kolkata' // Indian Standard Time
                 })
               }
             }
@@ -185,12 +186,13 @@ export default function OnamSnakeGame(): JSX.Element {
             const newEntry: LeaderboardEntry = {
               name: playerName,
               score,
-              date: new Date().toLocaleDateString('en-US', {
+              date: new Date().toLocaleString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Kolkata' // Indian Standard Time
               })
             }
             localLeaderboard.push(newEntry)
@@ -218,12 +220,13 @@ export default function OnamSnakeGame(): JSX.Element {
             localLeaderboard[existingPlayerIndex] = {
               name: playerName,
               score,
-              date: new Date().toLocaleDateString('en-US', {
+              date: new Date().toLocaleString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Kolkata' // Indian Standard Time
               })
             }
           }
@@ -232,12 +235,13 @@ export default function OnamSnakeGame(): JSX.Element {
           const newEntry: LeaderboardEntry = {
             name: playerName,
             score,
-            date: new Date().toLocaleDateString('en-US', {
+            date: new Date().toLocaleString('en-US', {
               year: 'numeric',
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
+              timeZone: 'Asia/Kolkata' // Indian Standard Time
             })
           }
           localLeaderboard.push(newEntry)
