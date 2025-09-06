@@ -8,29 +8,58 @@ const GRID_SIZE = 20
 const INITIAL_SNAKE = [{ x: 10, y: 10 }]
 const INITIAL_DIRECTION = { x: 0, y: -1 }
 
-const FOOD_TYPES = {
+interface FoodType {
+  image: string
+  points: number
+  probability: number
+}
+
+interface Position {
+  x: number
+  y: number
+}
+
+interface Food {
+  position: Position
+  type: keyof typeof FOOD_TYPES
+  points: number
+}
+
+interface GameStats {
+  papadamsEaten: number
+  payasamsEaten: number
+  bananasEaten: number
+  totalFoodsEaten: number
+}
+
+interface TouchStart {
+  x: number
+  y: number
+}
+
+const FOOD_TYPES: Record<string, FoodType> = {
   papadam: { image: "/papadam.webp", points: 1, probability: 0.6 },
   payasam: { image: "/payasam.webp", points: 5, probability: 0.25 },
   banana: { image: "/banana.webp", points: 3, probability: 0.15 },
 }
 
-export default function OnamSnakeGame() {
-  const canvasRef = useRef(null)
-  const [snake, setSnake] = useState(INITIAL_SNAKE)
-  const [direction, setDirection] = useState(INITIAL_DIRECTION)
-  const [food, setFood] = useState({ position: { x: 15, y: 15 }, type: "papadam", points: 1 })
-  const [score, setScore] = useState(0)
-  const [highScore, setHighScore] = useState(0)
-  const [gameOver, setGameOver] = useState(false)
-  const [gameStarted, setGameStarted] = useState(false)
-  const [speed, setSpeed] = useState(200)
-  const [gameStats, setGameStats] = useState({
+export default function OnamSnakeGame(): JSX.Element {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [snake, setSnake] = useState<Position[]>(INITIAL_SNAKE)
+  const [direction, setDirection] = useState<Position>(INITIAL_DIRECTION)
+  const [food, setFood] = useState<Food>({ position: { x: 15, y: 15 }, type: "papadam", points: 1 })
+  const [score, setScore] = useState<number>(0)
+  const [highScore, setHighScore] = useState<number>(0)
+  const [gameOver, setGameOver] = useState<boolean>(false)
+  const [gameStarted, setGameStarted] = useState<boolean>(false)
+  const [speed, setSpeed] = useState<number>(200)
+  const [gameStats, setGameStats] = useState<GameStats>({
     papadamsEaten: 0,
     payasamsEaten: 0,
     bananasEaten: 0,
     totalFoodsEaten: 0,
   })
-  const [touchStart, setTouchStart] = useState(null)
+  const [touchStart, setTouchStart] = useState<TouchStart | null>(null)
 
   useEffect(() => {
     const savedHighScore = localStorage.getItem("onam-snake-high-score")
@@ -39,11 +68,11 @@ export default function OnamSnakeGame() {
     }
   }, [])
 
-  const generateFood = useCallback(() => {
+  const generateFood = useCallback((): Food => {
     const canvas = canvasRef.current
     if (!canvas) return { position: { x: 15, y: 15 }, type: "papadam", points: 1 }
 
-    let newPosition
+    let newPosition: Position
     let attempts = 0
     const maxAttempts = 50
 
@@ -59,7 +88,7 @@ export default function OnamSnakeGame() {
     )
 
     const rand = Math.random()
-    let foodType = "papadam"
+    let foodType: keyof typeof FOOD_TYPES = "papadam"
 
     if (rand < FOOD_TYPES.banana.probability) {
       foodType = "banana"
@@ -74,9 +103,9 @@ export default function OnamSnakeGame() {
     }
   }, [snake])
 
-  const playChendaSound = () => {
+  const playChendaSound = (): void => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
 
@@ -107,6 +136,8 @@ export default function OnamSnakeGame() {
       head.y += direction.y
 
       const canvas = canvasRef.current
+      if (!canvas) return currentSnake
+      
       const maxX = Math.floor(canvas.width / GRID_SIZE)
       const maxY = Math.floor(canvas.height / GRID_SIZE)
 
@@ -127,7 +158,7 @@ export default function OnamSnakeGame() {
 
         setGameStats((prev) => ({
           ...prev,
-          [`${food.type}sEaten`]: prev[`${food.type}sEaten`] + 1,
+          [`${food.type}sEaten`]: prev[`${food.type}sEaten` as keyof GameStats] as number + 1,
           totalFoodsEaten: prev.totalFoodsEaten + 1,
         }))
 
@@ -159,7 +190,7 @@ export default function OnamSnakeGame() {
   }, [moveSnake, speed])
 
   useEffect(() => {
-    const handleKeyPress = (e) => {
+    const handleKeyPress = (e: KeyboardEvent): void => {
       if (!gameStarted) return
 
       switch (e.key) {
@@ -188,14 +219,14 @@ export default function OnamSnakeGame() {
 
   // Prevent mobile browser behaviors globally
   useEffect(() => {
-    const preventDefaultBehaviors = (e) => {
+    const preventDefaultBehaviors = (e: TouchEvent): void => {
       // Prevent pull-to-refresh and overscroll
       if (e.touches && e.touches.length > 0) {
         e.preventDefault()
       }
     }
 
-    const preventScroll = (e) => {
+    const preventScroll = (e: TouchEvent): void => {
       // Prevent scrolling when game is active
       if (gameStarted) {
         e.preventDefault()
@@ -208,7 +239,7 @@ export default function OnamSnakeGame() {
     document.addEventListener('touchend', preventDefaultBehaviors, { passive: false })
 
     // Prevent pull-to-refresh specifically
-    document.addEventListener('touchmove', (e) => {
+    document.addEventListener('touchmove', (e: TouchEvent) => {
       if (e.touches.length > 1) return
       const touch = e.touches[0]
       const startY = touch.pageY
@@ -231,9 +262,9 @@ export default function OnamSnakeGame() {
       document.body.style.overscrollBehavior = 'none'
       document.documentElement.style.overscrollBehavior = 'none'
       
-      // Prevent text selection and callouts
-      document.body.style.webkitTouchCallout = 'none'
-      document.body.style.webkitUserSelect = 'none'
+      // Prevent text selection and callouts (with proper typing)
+      ;(document.body.style as any).webkitTouchCallout = 'none'
+      ;(document.body.style as any).webkitUserSelect = 'none'
       document.body.style.userSelect = 'none'
       
       // Disable pull-to-refresh in Chrome/Safari
@@ -242,8 +273,8 @@ export default function OnamSnakeGame() {
       // Reset styles when game is not active
       document.body.style.overscrollBehavior = ''
       document.documentElement.style.overscrollBehavior = ''
-      document.body.style.webkitTouchCallout = ''
-      document.body.style.webkitUserSelect = ''
+      ;(document.body.style as any).webkitTouchCallout = ''
+      ;(document.body.style as any).webkitUserSelect = ''
       document.body.style.userSelect = ''
       document.body.style.touchAction = ''
     }
@@ -252,24 +283,24 @@ export default function OnamSnakeGame() {
       // Cleanup on unmount
       document.body.style.overscrollBehavior = ''
       document.documentElement.style.overscrollBehavior = ''
-      document.body.style.webkitTouchCallout = ''
-      document.body.style.webkitUserSelect = ''
+      ;(document.body.style as any).webkitTouchCallout = ''
+      ;(document.body.style as any).webkitUserSelect = ''
       document.body.style.userSelect = ''
       document.body.style.touchAction = ''
     }
   }, [gameStarted])
 
-  const handleTouchStart = (e) => {
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>): void => {
     e.preventDefault()
     const touch = e.touches[0]
     setTouchStart({ x: touch.clientX, y: touch.clientY })
   }
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>): void => {
     e.preventDefault() // Prevent scrolling during swipe
   }
 
-  const handleTouchEnd = (e) => {
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>): void => {
     e.preventDefault()
     if (!touchStart || !gameStarted) return
 
@@ -350,7 +381,7 @@ export default function OnamSnakeGame() {
       }
     })
 
-    const foodColors = {
+    const foodColors: Record<string, string> = {
       papadam: "#fbbf24",
       payasam: "#f59e0b",
       banana: "#eab308",
@@ -372,7 +403,7 @@ export default function OnamSnakeGame() {
     }
   }, [snake, food])
 
-  const startGame = () => {
+  const startGame = (): void => {
     setSnake(INITIAL_SNAKE)
     setDirection(INITIAL_DIRECTION)
     setFood(generateFood())
@@ -388,7 +419,7 @@ export default function OnamSnakeGame() {
     })
   }
 
-  const resetGame = () => {
+  const resetGame = (): void => {
     setGameStarted(false)
     setGameOver(false)
     setSnake(INITIAL_SNAKE)
@@ -411,9 +442,9 @@ export default function OnamSnakeGame() {
         overscrollBehavior: gameStarted ? 'none' : 'auto',
         WebkitOverflowScrolling: 'touch'
       }}
-      onTouchStart={gameStarted ? (e) => e.preventDefault() : undefined}
-      onTouchMove={gameStarted ? (e) => e.preventDefault() : undefined}
-      onTouchEnd={gameStarted ? (e) => e.preventDefault() : undefined}
+      onTouchStart={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
+      onTouchMove={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
+      onTouchEnd={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
     >
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="w-full h-full bg-[radial-gradient(circle_at_20%_20%,_#fbbf24_2px,_transparent_2px),radial-gradient(circle_at_80%_80%,_#34d399_2px,_transparent_2px),radial-gradient(circle_at_40%_60%,_#f97316_1px,_transparent_1px)] bg-[length:80px_80px]"></div>
