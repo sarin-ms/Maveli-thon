@@ -497,8 +497,8 @@ export default function OnamSnakeGame(): JSX.Element {
 
   // Add CSS to prevent mobile browser behaviors only during gameplay
   useEffect(() => {
-    if (gameStarted) {
-      // Disable pull-to-refresh and overscroll only during game
+    if (gameStarted && !gameOver) {
+      // Disable pull-to-refresh and overscroll only during active gameplay
       document.body.style.overscrollBehavior = 'none'
       document.documentElement.style.overscrollBehavior = 'none'
       
@@ -510,7 +510,7 @@ export default function OnamSnakeGame(): JSX.Element {
       // Disable pull-to-refresh in Chrome/Safari
       document.body.style.touchAction = 'pan-x pan-y'
     } else {
-      // Reset styles when game is not active
+      // Reset styles when game is not active or game is over
       document.body.style.overscrollBehavior = ''
       document.documentElement.style.overscrollBehavior = ''
       ;(document.body.style as any).webkitTouchCallout = ''
@@ -528,7 +528,7 @@ export default function OnamSnakeGame(): JSX.Element {
       document.body.style.userSelect = ''
       document.body.style.touchAction = ''
     }
-  }, [gameStarted])
+  }, [gameStarted, gameOver])
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>): void => {
     e.preventDefault()
@@ -699,24 +699,19 @@ export default function OnamSnakeGame(): JSX.Element {
   }
 
   const handleGameOver = (): void => {
-    console.log('Game over triggered. Username:', username.trim(), 'Score:', score)
     // Add current score to leaderboard if we have a username
     if (username.trim() && score > 0) {
-      console.log('Adding score to leaderboard for existing user')
       updateLeaderboard(username, score).catch(console.error)
     } else if (score > 0) {
       // Show name input if no username is set and player has a score
-      console.log('Showing name input for new user')
       setShowNameInput(true)
     }
   }
 
   const handleNameSubmit = (): void => {
-    console.log('Handle name submit clicked. Username:', username.trim(), 'Score:', score)
     if (username.trim()) {
       localStorage.setItem("onam-snake-username", username.trim())
       if (score > 0) {
-        console.log('Submitting score to leaderboard')
         updateLeaderboard(username, score).catch(console.error)
       }
     }
@@ -742,13 +737,13 @@ export default function OnamSnakeGame(): JSX.Element {
     <div 
       className="min-h-screen bg-gradient-to-br from-emerald-50 via-yellow-50 to-orange-50 p-2 sm:p-4"
       style={{
-        touchAction: gameStarted ? 'none' : 'auto',
-        overscrollBehavior: gameStarted ? 'none' : 'auto',
+        touchAction: (gameStarted && !gameOver) ? 'none' : 'auto',
+        overscrollBehavior: (gameStarted && !gameOver) ? 'none' : 'auto',
         WebkitOverflowScrolling: 'touch'
       }}
-      onTouchStart={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
-      onTouchMove={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
-      onTouchEnd={gameStarted ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
+      onTouchStart={(gameStarted && !gameOver) ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
+      onTouchMove={(gameStarted && !gameOver) ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
+      onTouchEnd={(gameStarted && !gameOver) ? (e: React.TouchEvent<HTMLDivElement>) => e.preventDefault() : undefined}
     >
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="w-full h-full bg-[radial-gradient(circle_at_20%_20%,_#fbbf24_2px,_transparent_2px),radial-gradient(circle_at_80%_80%,_#34d399_2px,_transparent_2px),radial-gradient(circle_at_40%_60%,_#f97316_1px,_transparent_1px)] bg-[length:80px_80px]"></div>
@@ -836,7 +831,7 @@ export default function OnamSnakeGame(): JSX.Element {
 
             {/* Name input modal for game over */}
             {showNameInput && gameOver && (
-              <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg relative z-50">
                 <div className="text-lg font-semibold text-yellow-800">
                   Great score! Enter your name for the leaderboard:
                 </div>
@@ -846,13 +841,23 @@ export default function OnamSnakeGame(): JSX.Element {
                     placeholder="Your name"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="max-w-xs"
+                    className="max-w-xs touch-manipulation"
                     maxLength={20}
                     onKeyPress={(e) => e.key === 'Enter' && handleNameSubmit()}
+                    autoComplete="off"
+                    autoFocus
+                    style={{ touchAction: 'manipulation' }}
                   />
                   <Button
                     onClick={handleNameSubmit}
-                    className="bg-yellow-600 hover:bg-yellow-700"
+                    onTouchEnd={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleNameSubmit()
+                    }}
+                    className="bg-yellow-600 hover:bg-yellow-700 touch-manipulation"
+                    type="button"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     Save to Leaderboard
                   </Button>
