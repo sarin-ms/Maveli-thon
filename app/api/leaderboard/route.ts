@@ -53,19 +53,49 @@ export async function POST(request: NextRequest) {
 
     const leaderboard = await getLeaderboard()
     
-    const newEntry: LeaderboardEntry = {
-      name: name.trim(),
-      score,
-      date: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+    // Check if player already exists
+    const existingPlayerIndex = leaderboard.findIndex(entry => entry.name.toLowerCase() === name.trim().toLowerCase())
+    
+    if (existingPlayerIndex !== -1) {
+      // Player exists - only update if new score is higher
+      const existingScore = leaderboard[existingPlayerIndex].score
+      if (score > existingScore) {
+        // Update existing entry with better score
+        leaderboard[existingPlayerIndex] = {
+          name: name.trim(),
+          score,
+          date: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }
+      } else {
+        // Score is not better, don't update
+        return NextResponse.json({ 
+          success: true, 
+          leaderboard: leaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score).slice(0, 10),
+          updated: false,
+          message: 'Score not high enough to update leaderboard'
+        })
+      }
+    } else {
+      // New player - add new entry
+      const newEntry: LeaderboardEntry = {
+        name: name.trim(),
+        score,
+        date: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }
+      leaderboard.push(newEntry)
     }
-
-    leaderboard.push(newEntry)
     
     // Sort by score (highest first) and keep only top 10
     leaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
@@ -76,7 +106,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       leaderboard: topLeaderboard,
-      kvAvailable: saved
+      kvAvailable: saved,
+      updated: true
     })
   } catch (error) {
     console.error('Error in POST /api/leaderboard:', error)

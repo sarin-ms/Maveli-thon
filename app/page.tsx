@@ -158,8 +158,79 @@ export default function OnamSnakeGame(): JSX.Element {
         // If KV is not available, fallback to localStorage
         if (!result.kvAvailable) {
           const localLeaderboard = JSON.parse(localStorage.getItem("onam-snake-leaderboard") || "[]")
+          const playerName = name.trim() || 'Anonymous'
+          
+          // Check if player already exists
+          const existingPlayerIndex = localLeaderboard.findIndex((entry: LeaderboardEntry) => 
+            entry.name.toLowerCase() === playerName.toLowerCase()
+          )
+          
+          if (existingPlayerIndex !== -1) {
+            // Player exists - only update if new score is higher
+            if (score > localLeaderboard[existingPlayerIndex].score) {
+              localLeaderboard[existingPlayerIndex] = {
+                name: playerName,
+                score,
+                date: new Date().toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              }
+            }
+          } else {
+            // New player - add new entry
+            const newEntry: LeaderboardEntry = {
+              name: playerName,
+              score,
+              date: new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            }
+            localLeaderboard.push(newEntry)
+          }
+          
+          localLeaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
+          localStorage.setItem("onam-snake-leaderboard", JSON.stringify(localLeaderboard.slice(0, 10)))
+        }
+      }
+    } catch (error) {
+      console.error('Error updating leaderboard:', error)
+      // Fallback to localStorage
+      try {
+        const localLeaderboard = JSON.parse(localStorage.getItem("onam-snake-leaderboard") || "[]")
+        const playerName = name.trim() || 'Anonymous'
+        
+        // Check if player already exists
+        const existingPlayerIndex = localLeaderboard.findIndex((entry: LeaderboardEntry) => 
+          entry.name.toLowerCase() === playerName.toLowerCase()
+        )
+        
+        if (existingPlayerIndex !== -1) {
+          // Player exists - only update if new score is higher
+          if (score > localLeaderboard[existingPlayerIndex].score) {
+            localLeaderboard[existingPlayerIndex] = {
+              name: playerName,
+              score,
+              date: new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            }
+          }
+        } else {
+          // New player - add new entry
           const newEntry: LeaderboardEntry = {
-            name: name.trim() || 'Anonymous',
+            name: playerName,
             score,
             date: new Date().toLocaleDateString('en-US', {
               year: 'numeric',
@@ -170,27 +241,8 @@ export default function OnamSnakeGame(): JSX.Element {
             })
           }
           localLeaderboard.push(newEntry)
-          localLeaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
-          localStorage.setItem("onam-snake-leaderboard", JSON.stringify(localLeaderboard.slice(0, 10)))
         }
-      }
-    } catch (error) {
-      console.error('Error updating leaderboard:', error)
-      // Fallback to localStorage
-      try {
-        const localLeaderboard = JSON.parse(localStorage.getItem("onam-snake-leaderboard") || "[]")
-        const newEntry: LeaderboardEntry = {
-          name: name.trim() || 'Anonymous',
-          score,
-          date: new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        }
-        localLeaderboard.push(newEntry)
+        
         localLeaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
         localStorage.setItem("onam-snake-leaderboard", JSON.stringify(localLeaderboard.slice(0, 10)))
       } catch (localError) {
