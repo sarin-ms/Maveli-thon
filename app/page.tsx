@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 
 const GRID_SIZE = 20
 const INITIAL_SNAKE = [{ x: 10, y: 10 }]
@@ -37,6 +39,12 @@ interface TouchStart {
   y: number
 }
 
+interface LeaderboardEntry {
+  name: string
+  score: number
+  date: string
+}
+
 const FOOD_TYPES: Record<string, FoodType> = {
   papadam: { image: "/papadam.webp", points: 1, probability: 0.6 },
   payasam: { image: "/payasam.webp", points: 5, probability: 0.25 },
@@ -63,6 +71,8 @@ export default function OnamSnakeGame(): JSX.Element {
   const [canvasSize, setCanvasSize] = useState<number>(400)
   const [maveliImage, setMaveliImage] = useState<HTMLImageElement | null>(null)
   const [tailImage, setTailImage] = useState<HTMLImageElement | null>(null)
+  const [username, setUsername] = useState<string>('')
+  const [showNameInput, setShowNameInput] = useState<boolean>(false)
 
   useEffect(() => {
     const img = new Image()
@@ -98,7 +108,96 @@ export default function OnamSnakeGame(): JSX.Element {
     if (savedHighScore) {
       setHighScore(Number.parseInt(savedHighScore))
     }
+    
+    // Load saved username
+    const savedUsername = localStorage.getItem("onam-snake-username")
+    if (savedUsername) {
+      setUsername(savedUsername)
+    }
   }, [])
+
+  // Helper functions for leaderboard
+  const getLeaderboard = async (): Promise<LeaderboardEntry[]> => {
+    try {
+      const response = await fetch('/api/leaderboard')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.length > 0) {
+          return data
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard from API:', error)
+    }
+    
+    // Fallback to localStorage for local development
+    try {
+      const localData = localStorage.getItem("onam-snake-leaderboard")
+      return localData ? JSON.parse(localData) : []
+    } catch (error) {
+      console.error('Error reading from localStorage:', error)
+      return []
+    }
+  }
+
+  const updateLeaderboard = async (name: string, score: number): Promise<void> => {
+    try {
+      const response = await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim() || 'Anonymous',
+          score
+        }),
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        // If KV is not available, fallback to localStorage
+        if (!result.kvAvailable) {
+          const localLeaderboard = JSON.parse(localStorage.getItem("onam-snake-leaderboard") || "[]")
+          const newEntry: LeaderboardEntry = {
+            name: name.trim() || 'Anonymous',
+            score,
+            date: new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          }
+          localLeaderboard.push(newEntry)
+          localLeaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
+          localStorage.setItem("onam-snake-leaderboard", JSON.stringify(localLeaderboard.slice(0, 10)))
+        }
+      }
+    } catch (error) {
+      console.error('Error updating leaderboard:', error)
+      // Fallback to localStorage
+      try {
+        const localLeaderboard = JSON.parse(localStorage.getItem("onam-snake-leaderboard") || "[]")
+        const newEntry: LeaderboardEntry = {
+          name: name.trim() || 'Anonymous',
+          score,
+          date: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }
+        localLeaderboard.push(newEntry)
+        localLeaderboard.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.score - a.score)
+        localStorage.setItem("onam-snake-leaderboard", JSON.stringify(localLeaderboard.slice(0, 10)))
+      } catch (localError) {
+        console.error('Error with localStorage fallback:', localError)
+      }
+    }
+  }
 
   const generateFood = useCallback((): Food => {
     const canvas = canvasRef.current
@@ -199,6 +298,11 @@ export default function OnamSnakeGame(): JSX.Element {
           if (newScore > highScore) {
             setHighScore(newScore)
             localStorage.setItem("onam-snake-high-score", newScore.toString())
+            
+            // Add to leaderboard if we have a username
+            if (username.trim()) {
+              updateLeaderboard(username, newScore).catch(console.error)
+            }
           }
           return newScore
         })
@@ -220,6 +324,13 @@ export default function OnamSnakeGame(): JSX.Element {
     const gameLoop = setInterval(moveSnake, speed)
     return () => clearInterval(gameLoop)
   }, [moveSnake, speed])
+
+  // Handle game over
+  useEffect(() => {
+    if (gameOver && gameStarted) {
+      handleGameOver()
+    }
+  }, [gameOver, gameStarted])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent): void => {
@@ -496,12 +607,33 @@ export default function OnamSnakeGame(): JSX.Element {
     setGameOver(false)
     setGameStarted(true)
     setSpeed(200)
+    setShowNameInput(false) // Hide name input when starting
     setGameStats({
       papadamsEaten: 0,
       payasamsEaten: 0,
       bananasEaten: 0,
       totalFoodsEaten: 0,
     })
+  }
+
+  const handleGameOver = (): void => {
+    // Add current score to leaderboard if we have a username
+    if (username.trim() && score > 0) {
+      updateLeaderboard(username, score).catch(console.error)
+    } else if (score > 0) {
+      // Show name input if no username is set and player has a score
+      setShowNameInput(true)
+    }
+  }
+
+  const handleNameSubmit = (): void => {
+    if (username.trim()) {
+      localStorage.setItem("onam-snake-username", username.trim())
+      if (score > 0) {
+        updateLeaderboard(username, score).catch(console.error)
+      }
+    }
+    setShowNameInput(false)
   }
 
   const resetGame = (): void => {
@@ -574,21 +706,74 @@ export default function OnamSnakeGame(): JSX.Element {
           </Card>
 
           <div className="text-center space-y-4">
-            {!gameStarted && !gameOver && (
-              <Button
-                onClick={startGame}
-                onTouchEnd={(e) => {
-                  e.preventDefault()
-                  startGame()
-                }}
-                size="lg"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 touch-manipulation"
-              >
-                Start Onam Feast
-              </Button>
+            {/* Username input */}
+            {(!gameStarted && !gameOver) && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-2 items-center justify-center">
+                  <Input
+                    type="text"
+                    placeholder="Enter your name (optional)"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="max-w-xs"
+                    maxLength={20}
+                  />
+                  {username.trim() && (
+                    <Button
+                      onClick={() => localStorage.setItem("onam-snake-username", username.trim())}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Save Name
+                    </Button>
+                  )}
+                </div>
+                <Button
+                  onClick={startGame}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    startGame()
+                  }}
+                  size="lg"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 touch-manipulation"
+                >
+                  Start Onam Feast
+                </Button>
+                <div>
+                  <Link href="/leaderboard" className="text-emerald-600 hover:text-emerald-800 underline">
+                    View Leaderboard 🏆
+                  </Link>
+                </div>
+              </div>
             )}
 
-            {gameOver && (
+            {/* Name input modal for game over */}
+            {showNameInput && gameOver && (
+              <div className="space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-lg font-semibold text-yellow-800">
+                  Great score! Enter your name for the leaderboard:
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 items-center justify-center">
+                  <Input
+                    type="text"
+                    placeholder="Your name"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="max-w-xs"
+                    maxLength={20}
+                    onKeyPress={(e) => e.key === 'Enter' && handleNameSubmit()}
+                  />
+                  <Button
+                    onClick={handleNameSubmit}
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    Save to Leaderboard
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {gameOver && !showNameInput && (
               <div className="space-y-4">
                 <div className="text-xl font-bold text-red-600">Game Over! Try again for a better feast!</div>
                 <div className="text-lg text-emerald-700">
@@ -610,6 +795,11 @@ export default function OnamSnakeGame(): JSX.Element {
                 >
                   Start New Feast
                 </Button>
+                <div>
+                  <Link href="/leaderboard" className="text-emerald-600 hover:text-emerald-800 underline">
+                    View Leaderboard 🏆
+                  </Link>
+                </div>
               </div>
             )}
 
